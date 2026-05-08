@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Android Compose & Firebase · KtShop</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --kt:#7B2FBE;--kts:#B388FF;--droid:#3DDC84;--droids:#69F0AE;
+  --bg:#0D0715;--sf:#170C28;--sf2:#211038;
+  --bd:rgba(123,47,190,0.22);--tx:#EDE7F6;--mt:#9E82C8;
+  --gn:#00E5A0;--gnb:rgba(0,229,160,0.08);
+  --rd:#FF5C7A;--rdb:rgba(255,92,122,0.08);
+  --yw:#FFD166;--r:12px;
+}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(123,47,190,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(123,47,190,0.04) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0}
+.orb{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+.orb1{width:500px;height:500px;background:rgba(123,47,190,0.22);top:-150px;right:-100px}
+.orb2{width:400px;height:400px;background:rgba(61,220,132,0.1);bottom:80px;left:-80px}
+.wrap{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:40px 24px 80px}
+
+header{text-align:center;margin-bottom:52px;animation:fd .7s ease both}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(123,47,190,0.15);border:1px solid rgba(123,47,190,0.35);border-radius:999px;padding:6px 16px;font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--kts);text-transform:uppercase;margin-bottom:20px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--droid);animation:pulse 2s infinite}
+h1{font-size:clamp(26px,5vw,40px);font-weight:800;line-height:1.15;letter-spacing:-.03em;background:linear-gradient(135deg,#fff 30%,var(--kts));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.sub{color:var(--mt);font-size:14px;font-weight:300;line-height:1.6}
+
+.pgwrap{margin-bottom:44px}
+.pgmeta{display:flex;justify-content:space-between;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--mt);margin-bottom:8px}
+.pgmeta span:last-child{color:var(--kts)}
+.pgtrk{height:3px;background:var(--sf2);border-radius:999px;overflow:hidden}
+.pgfill{height:100%;background:linear-gradient(90deg,var(--kt),var(--droid));border-radius:999px;transition:width .5s cubic-bezier(.4,0,.2,1);width:0%}
+
+/* ── Interactive widgets ─────────────────────────────────────── */
+.widget{background:var(--sf2);border:1px solid var(--bd);border-radius:16px;padding:20px;margin:-4px 0 20px}
+.w-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--mt);text-transform:uppercase;margin-bottom:14px}
+
+/* Session cycle widget */
+.cycle{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin-bottom:14px}
+.cstep{padding:10px 14px;border-radius:8px;font-size:11px;font-family:'JetBrains Mono',monospace;text-align:center;min-width:110px;opacity:.4;transition:all .4s}
+.cstep.active{opacity:1;transform:scale(1.06)}
+.cs-reg{background:rgba(123,47,190,0.15);border:1px solid rgba(123,47,190,0.4);color:var(--kts)}
+.cs-user{background:rgba(61,220,132,0.1);border:1px solid rgba(61,220,132,0.3);color:var(--droid)}
+.cs-sess{background:rgba(179,136,255,0.1);border:1px solid rgba(179,136,255,0.3);color:var(--kts)}
+.cs-out{background:rgba(255,92,122,0.1);border:1px solid rgba(255,92,122,0.3);color:var(--rd)}
+.carr{color:var(--mt);font-size:16px;padding:0 6px;flex-shrink:0}
+.w-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+.w-btn{padding:7px 16px;border-radius:8px;border:none;font-family:'Sora',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.w-btn.reg{background:rgba(123,47,190,0.15);color:var(--kts);border:1px solid rgba(123,47,190,0.3)}
+.w-btn.login{background:rgba(61,220,132,0.15);color:var(--droid);border:1px solid rgba(61,220,132,0.3)}
+.w-btn.logout{background:rgba(255,92,122,0.15);color:var(--rd);border:1px solid rgba(255,92,122,0.3)}
+.w-state{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--mt);min-height:18px;transition:all .3s}
+.w-state.ok{color:var(--droid)} .w-state.err{color:var(--rd)}
+
+/* Firestore structure widget */
+.fs-tree{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:var(--mt)}
+.fs-col{color:var(--kts);font-weight:700}
+.fs-doc{color:var(--droid)}
+.fs-field{color:#CCDDFF}
+.fs-val{color:#C3E88D}
+.fs-add-btn{display:inline-block;margin-top:12px;padding:6px 14px;background:rgba(61,220,132,0.15);border:1px solid rgba(61,220,132,0.3);border-radius:6px;color:var(--droid);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s}
+.fs-add-btn:hover{background:rgba(61,220,132,0.25)}
+.fs-pulse{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--mt);margin-top:10px}
+.fs-dot{width:7px;height:7px;border-radius:50%;background:var(--droid);animation:pulse 1.5s infinite}
+
+/* DB comparison widget */
+.db-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+.db-panel{border-radius:10px;overflow:hidden}
+.db-hdr{padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;display:flex;justify-content:space-between}
+.db-hdr.fs{background:rgba(123,47,190,0.2);color:var(--kts)}
+.db-hdr.rt{background:rgba(61,220,132,0.15);color:var(--droid)}
+.db-body{padding:10px 12px;background:var(--sf);font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;color:var(--mt)}
+.db-body .k{color:var(--kts)} .db-body .v{color:#C3E88D} .db-body.rt .k{color:var(--droid)}
+
+/* Card */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:20px;padding:34px;margin-bottom:16px;animation:fu .5s ease both;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--kt),var(--droid),transparent)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--kts);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.qnum::after{content:'';flex:1;height:1px;background:var(--bd)}
+.qtxt{font-size:17px;font-weight:600;line-height:1.55;margin-bottom:24px}
+.qcode{background:#110820;border:1px solid rgba(123,47,190,0.2);border-radius:8px;padding:12px 16px;margin:-4px 0 18px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#CCDDFF;line-height:1.7;overflow-x:auto}
+.kw{color:#C792EA}.fn{color:#FFCB6B}.cm{color:#546E7A}.str{color:#C3E88D}.ty{color:#82AAFF}
+
+.opts{display:flex;flex-direction:column;gap:9px}
+.opt{display:flex;align-items:flex-start;gap:13px;padding:14px 18px;background:var(--sf2);border:1px solid transparent;border-radius:var(--r);cursor:pointer;transition:all .2s;text-align:left;width:100%;font-family:'Sora',sans-serif;color:var(--tx);font-size:14px;line-height:1.5}
+.opt:hover:not(:disabled){border-color:rgba(123,47,190,0.35);background:rgba(123,47,190,0.07);transform:translateX(4px)}
+.opt:disabled{cursor:default}
+.ol{flex-shrink:0;width:26px;height:26px;border-radius:6px;background:rgba(123,47,190,0.12);border:1px solid rgba(123,47,190,0.25);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--kts);margin-top:1px}
+.opt.correct{border-color:var(--gn);background:var(--gnb)}.opt.correct .ol{background:var(--gn);border-color:var(--gn);color:#000}
+.opt.wrong{border-color:var(--rd);background:var(--rdb);opacity:.7}.opt.wrong .ol{background:var(--rd);border-color:var(--rd);color:#fff}
+.opt.dimmed{opacity:.32}
+.expl{display:none;margin-top:18px;padding:14px 18px;background:rgba(255,209,102,0.07);border:1px solid rgba(255,209,102,0.2);border-radius:var(--r);font-size:13px;line-height:1.65;color:#ccc}
+.expl.show{display:block;animation:fu .3s ease both}
+.expl strong{color:var(--yw);font-weight:600;display:block;margin-bottom:3px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.nbtn{display:none;margin-top:18px;width:100%;padding:15px;background:linear-gradient(135deg,var(--kt),#9C27B0);border:none;border-radius:var(--r);color:#fff;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.nbtn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(123,47,190,0.4)}
+.nbtn.show{display:block;animation:fu .3s ease both}
+
+#results{display:none;text-align:center;animation:fu .6s ease both}
+.sring{width:160px;height:160px;margin:0 auto 28px;position:relative}
+.sring svg{transform:rotate(-90deg)}
+.sring-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace}
+#results h2{font-size:28px;font-weight:800;margin-bottom:10px}
+#results p{color:var(--mt);font-size:15px;margin-bottom:28px}
+.retry{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,var(--kt),var(--droid));border:none;border-radius:999px;color:#fff;font-family:'Sora',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s}
+.retry:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(123,47,190,0.5)}
+
+@keyframes fd{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="wrap">
+
+<header>
+  <div class="badge"><span class="dot"></span> Android · Compose · Firebase</div>
+  <h1>Quiz — KtShop<br>Concepts Firebase</h1>
+  <p class="sub">Auth · Firestore · Storage · Realtime Database<br>8 questions · Niveau intermediaire</p>
+</header>
+
+<div class="pgwrap">
+  <div class="pgmeta"><span id="pgLabel">Question 1 / 8</span><span id="pgScore">Score : 0</span></div>
+  <div class="pgtrk"><div class="pgfill" id="pgfill"></div></div>
+</div>
+
+<div id="quiz"></div>
+
+<div id="results">
+  <div class="sring">
+    <svg width="160" height="160" viewBox="0 0 160 160">
+      <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(123,47,190,.2)" stroke-width="14"/>
+      <circle id="arc" cx="80" cy="80" r="68" fill="none" stroke="url(#g)" stroke-width="14"
+        stroke-linecap="round" stroke-dasharray="427.3" stroke-dashoffset="427.3"/>
+      <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#7B2FBE"/>
+        <stop offset="100%" stop-color="#3DDC84"/>
+      </linearGradient></defs>
+    </svg>
+    <div class="sring-val" id="resScore"></div>
+  </div>
+  <h2 id="resTitle"></h2>
+  <p id="resMsg"></p>
+  <button class="retry" onclick="restart()">↺  Recommencer</button>
+</div>
+
+<script>
+const questions = [
+  // Q1 — Firebase BaaS
+  {
+    num: "01", topic: "Firebase · Concept BaaS",
+    text: "Firebase est qualifie de 'Backend-as-a-Service' (BaaS). Qu'est-ce que cela signifie concretement pour un developpeur Android ?",
+    opts: [
+      "Firebase remplace Android Studio et permet de coder l'app directement dans le navigateur.",
+      "Firebase fournit une infrastructure serveur cle en main (base de donnees, auth, stockage...) sans avoir a gerer de serveur soi-meme.",
+      "Firebase est une alternative a Kotlin — on peut coder l'app uniquement en JavaScript.",
+      "Firebase héberge l'APK et le distribue automatiquement sur le Play Store."
+    ],
+    correct: 1,
+    expl: "BaaS signifie que Firebase prend en charge toute l'infrastructure serveur : base de donnees, authentification, stockage de fichiers, notifications... En tant que developpeur, vous vous concentrez sur l'experience utilisateur Android. Firebase s'occupe du reste — sans que vous n'ayez a configurer ou maintenir un serveur."
+  },
+
+  // Q2 — Auth session
+  {
+    num: "02", topic: "Firebase Auth · Session",
+    text: "Un utilisateur se connecte avec email + mot de passe via Firebase Auth, puis ferme l'application. Que se passe-t-il lorsqu'il rouvre l'app ?",
+    widget: "session",
+    opts: [
+      "Il doit se reconnecter — Firebase ne conserve jamais la session apres fermeture de l'app.",
+      "Il est directement sur l'ecran principal — Firebase Auth persiste la session automatiquement entre les relances.",
+      "L'app envoie une nouvelle requete au serveur Firebase pour recreer la session.",
+      "La session persiste 24h seulement, apres quoi l'utilisateur doit se reconnecter."
+    ],
+    correct: 1,
+    expl: "Firebase Auth persiste la session automatiquement sur l'appareil. Au prochain lancement, auth.currentUser retourne directement l'utilisateur sans nouvelle connexion. C'est ce que l'AuthGate detecte : si currentUser != null au demarrage, l'utilisateur va directement sur l'ecran principal. Cette persistance reste active jusqu'a un signOut() explicite."
+  },
+
+  // Q3 — Firestore structure
+  {
+    num: "03", topic: "Firestore · Structure NoSQL",
+    text: "Dans KtShop, les produits sont stockes dans Firestore. Lequel de ces schemas represente correctement la structure d'un produit dans Firestore ?",
+    widget: "firestore",
+    opts: [
+      "Table SQL products avec colonnes id, nom, prix, stock.",
+      "Collection 'products' contenant des Documents, chacun ayant des Champs (nom, prix, stock...).",
+      "Un fichier JSON unique contenant un tableau de tous les produits.",
+      "Une base de donnees relationnelle avec des relations entre produits et categories."
+    ],
+    correct: 1,
+    expl: "Firestore est une base de donnees NoSQL orientee documents. Il n'y a pas de tables : les donnees sont organisees en Collections > Documents > Champs. Chaque produit est un Document dans la Collection 'products'. Ce modele est flexible (chaque document peut avoir des champs differents) et tres adapte aux applications mobile."
+  },
+
+  // Q4 — Listener vs get
+  {
+    num: "04", topic: "Firestore · Temps reel",
+    text: "Dans CatalogueViewModel, on utilise addSnapshotListener() plutot que get(). Que se passe-t-il si un admin ajoute un nouveau produit dans Firebase Console pendant que l'app est ouverte ?",
+    code: `// Option A : get() — lecture unique
+db.collection("products").get()
+    .addOnSuccessListener { snapshot -> /* ... */ }
+
+// Option B : addSnapshotListener() — ecoute continue
+db.collection("products")
+    .addSnapshotListener { snapshot, _ -> /* ... */ }`,
+    opts: [
+      "Les deux options : le nouveau produit apparait dans les deux cas apres un rafraichissement manuel.",
+      "Option A : le produit apparait immediatement. Option B : necessite un redemarrage de l'app.",
+      "Option B uniquement : le nouveau produit apparait automatiquement dans la grille, sans action de l'utilisateur.",
+      "Aucune des deux : Firestore ne supporte pas la detection de nouveaux documents en temps reel."
+    ],
+    correct: 2,
+    expl: "get() est une lecture unique : elle recupere les donnees au moment de l'appel et ne reecoute pas les changements suivants. addSnapshotListener() maintient une connexion ouverte et appelle le callback a chaque changement dans Firestore (ajout, modification, suppression). Dans KtShop, c'est ce qui permet a la grille de se mettre a jour instantanement quand un admin ajoute ou modifie un produit."
+  },
+
+  // Q5 — Storage vs Firestore
+  {
+    num: "05", topic: "Firebase Storage · Concept",
+    text: "Pourquoi stocke-t-on les images produits dans Firebase Storage et non directement dans un champ Firestore ?",
+    opts: [
+      "Firestore ne supporte pas les champs de type image en Kotlin.",
+      "Firebase Storage est gratuit, alors que stocker des images dans Firestore est payant.",
+      "Firestore a une limite de 1MB par document. Une image depasse souvent cette limite. Storage est concu pour les fichiers volumineux — Firestore ne stocke que l'URL.",
+      "Les images stockees dans Firestore ne peuvent pas etre affichees dans Compose."
+    ],
+    correct: 2,
+    expl: "Firestore est optimise pour les donnees textuelles structurees (nom, prix, booleen, nombre...) avec une limite stricte de 1MB par document. Une image produit de qualite correcte fait facilement 200KB a 3MB. La bonne pratique est : 1) uploader l'image dans Firebase Storage (concu pour les fichiers volumineux), 2) recuperer l'URL HTTPS publique, 3) stocker uniquement cette URL dans Firestore."
+  },
+
+  // Q6 — ViewModel pourquoi
+  {
+    num: "06", topic: "ViewModel · Pourquoi ?",
+    text: "L'etudiant Karim met toute la logique Firebase directement dans son Composable (sans ViewModel). Quel probleme va-t-il rencontrer ?",
+    code: `@Composable
+fun CatalogueScreen() {
+    // Directement dans le Composable — sans ViewModel
+    val products = remember { mutableStateListOf<Product>() }
+    LaunchedEffect(Unit) {
+        Firebase.firestore.collection("products")
+            .get().await()
+            .documents.forEach { products.add(Product.fromDocument(it)) }
+    }
+    // ...
+}`,
+    opts: [
+      "Aucun probleme — ce code est equivalent a utiliser un ViewModel.",
+      "La liste se vide et les donnees Firebase sont rechargees a chaque rotation d'ecran ou recomposition — mauvaise experience utilisateur et gaspillage de ressources.",
+      "Compose interdit l'utilisation de Firebase directement dans un Composable.",
+      "Le code compile mais Firebase.firestore n'est pas accessible depuis un Composable."
+    ],
+    correct: 1,
+    expl: "Le probleme est la duree de vie. remember survit aux recompositions mais PAS aux recreations de Composable (changement de configuration : rotation, changement de langue...). A chaque rotation, la liste est recreee vide et LaunchedEffect relance un appel Firebase. Le ViewModel survit aux changements de configuration — les donnees restent stables. De plus, le Listener Firestore n'est jamais nettoye proprement sans ViewModel."
+  },
+
+  // Q7 — CRUD difference
+  {
+    num: "07", topic: "Firestore · CRUD",
+    text: "Un admin veut modifier uniquement le prix d'un produit existant dans Firestore sans toucher aux autres champs (nom, imageUrl, stock...). Quelle methode choisir ?",
+    opts: [
+      "add() — cree un nouveau document avec uniquement le nouveau prix.",
+      "set() — remplace le document entier. Les champs non mentionnes (nom, imageUrl...) seront supprimes.",
+      "update() — modifie uniquement les champs specifies. Les autres champs restent intacts.",
+      "delete() puis add() — supprimer l'ancien document et recreer un nouveau avec le nouveau prix."
+    ],
+    correct: 2,
+    expl: "update() est la methode appropriee pour une modification partielle. Elle ne touche qu'aux champs fournis en parametre — tous les autres champs du document restent inchanges. set() sans le parametre merge=true remplacerait le document entier et effacerait nom, imageUrl, stock... Ce serait une erreur courante et destructrice. add() cree toujours un nouveau document."
+  },
+
+  // Q8 — Realtime DB vs Firestore
+  {
+    num: "08", topic: "Realtime Database · Concept",
+    text: "KtShop utilise Firestore pour le catalogue et Realtime Database pour le panier. Pourquoi ne pas utiliser Firestore pour les deux ?",
+    widget: "dbcompare",
+    opts: [
+      "Firestore est trop lent pour afficher un catalogue. Realtime Database est plus rapide pour les listes.",
+      "On ne peut pas avoir Firestore et Realtime Database dans le meme projet Firebase.",
+      "Firestore est optimise pour les donnees structurees et les requetes riches (catalogue). Realtime Database excelle pour les synchronisations frequentes et simples (panier) avec une tres faible latence.",
+      "Realtime Database est gratuit alors que Firestore est payant pour les paniers."
+    ],
+    correct: 2,
+    expl: "Les deux services ont des points forts complementaires. Firestore est ideal pour le catalogue : structure de documents flexible, requetes riches (orderBy, where, limit), bon pour des donnees rarement modifiees. Realtime Database est ideal pour le panier : structure JSON simple, synchronisation ultra-rapide, parfait pour des donnees frequemment modifiees (quantites, ajouts/suppressions). Utiliser le bon outil pour le bon cas d'usage est une decision d'architecture importante."
+  },
+];
+
+// ── Widgets interactifs ────────────────────────────────────────────────────────
+function buildSessionWidget() {
+  return `<div class="widget">
+    <div class="w-label">Cycle de vie d'une session Firebase Auth</div>
+    <div class="cycle">
+      <div class="cstep cs-reg" id="cs0">📝 Inscription<br><small>createUser()</small></div>
+      <div class="carr">→</div>
+      <div class="cstep cs-user" id="cs1">👤 Compte cree<br><small>User != null</small></div>
+      <div class="carr">→</div>
+      <div class="cstep cs-sess" id="cs2">🔒 Session active<br><small>persist. auto</small></div>
+      <div class="carr">→</div>
+      <div class="cstep cs-out" id="cs3">🚪 Deconnecte<br><small>signOut()</small></div>
+    </div>
+    <div class="w-btns">
+      <button class="w-btn reg" onclick="simStep(0)">S'inscrire</button>
+      <button class="w-btn login" onclick="simStep(2)">Relancer l'app</button>
+      <button class="w-btn logout" onclick="simStep(3)">Se deconnecter</button>
+    </div>
+    <div class="w-state" id="wState">Cliquer pour simuler...</div>
+  </div>`;
+}
+
+function buildFirestoreWidget() {
+  return `<div class="widget">
+    <div class="w-label">Structure Firestore de KtShop (cliquer sur un document)</div>
+    <div class="fs-tree">
+      <span class="fs-col">products/</span>  ← Collection<br>
+      &nbsp;&nbsp;<span class="fs-doc" style="cursor:pointer" onclick="toggleDoc('d1')">▶ abc123XYZ/</span>  ← Document (ID auto)<br>
+      <div id="d1" style="display:none;padding-left:20px">
+        &nbsp;&nbsp;<span class="fs-field">nom</span> : <span class="fs-val">"T-shirt blanc"</span><br>
+        &nbsp;&nbsp;<span class="fs-field">prix</span> : <span class="fs-val">29.90</span><br>
+        &nbsp;&nbsp;<span class="fs-field">stock</span> : <span class="fs-val">14</span><br>
+        &nbsp;&nbsp;<span class="fs-field">imageUrl</span> : <span class="fs-val">"https://storage..."</span><br>
+        &nbsp;&nbsp;<span class="fs-field">adminUid</span> : <span class="fs-val">"uid_admin"</span><br>
+      </div>
+      &nbsp;&nbsp;<span class="fs-doc" style="cursor:pointer" onclick="toggleDoc('d2')">▶ xyz789ABC/</span>  ← Document<br>
+      <div id="d2" style="display:none;padding-left:20px">
+        &nbsp;&nbsp;<span class="fs-field">nom</span> : <span class="fs-val">"Chaussures"</span><br>
+        &nbsp;&nbsp;<span class="fs-field">prix</span> : <span class="fs-val">89.90</span><br>
+        &nbsp;&nbsp;<span class="fs-field">stock</span> : <span class="fs-val">5</span><br>
+      </div>
+    </div>
+    <button class="fs-add-btn" onclick="addFakeDoc()">+ Simuler ajout produit</button>
+    <div class="fs-pulse"><div class="fs-dot"></div> Listener actif — tout changement met a jour l'UI</div>
+  </div>`;
+}
+
+function buildDbCompareWidget() {
+  return `<div class="widget">
+    <div class="w-label">Firestore vs Realtime Database dans KtShop</div>
+    <div class="db-grid">
+      <div class="db-panel">
+        <div class="db-hdr fs">Cloud Firestore <span>Catalogue</span></div>
+        <div class="db-body">
+          <span class="k">products/</span><br>
+          &nbsp;<span class="k">abc123/</span><br>
+          &nbsp;&nbsp;<span class="k">nom:</span> <span class="v">"T-shirt"</span><br>
+          &nbsp;&nbsp;<span class="k">prix:</span> <span class="v">29.90</span><br>
+          &nbsp;&nbsp;<span class="k">stock:</span> <span class="v">14</span><br>
+          &nbsp;&nbsp;<span class="k">imageUrl:</span> <span class="v">"..."</span>
+        </div>
+      </div>
+      <div class="db-panel">
+        <div class="db-hdr rt">Realtime DB <span>Panier</span></div>
+        <div class="db-body rt">
+          <span class="k">carts/</span><br>
+          &nbsp;<span class="k">uid_A/</span><br>
+          &nbsp;&nbsp;<span class="k">items/</span><br>
+          &nbsp;&nbsp;&nbsp;<span class="k">abc123/</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">qte:</span> <span class="v">2</span><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span class="k">prix:</span> <span class="v">29.90</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Widget actions
+function simStep(step) {
+  [0,1,2,3].forEach(i => document.getElementById('cs'+i)?.classList.remove('active'));
+  const msgs = [
+    "Compte cree. Firebase enregistre l'email et hache le mot de passe.",
+    "",
+    "Session retrouvee ! auth.currentUser != null — pas besoin de se reconnecter.",
+    "Session fermee. auth.currentUser = null. Retour sur AuthScreen."
+  ];
+  if (step === 0) { document.getElementById('cs0').classList.add('active'); document.getElementById('cs1').classList.add('active'); }
+  else document.getElementById('cs'+step).classList.add('active');
+  const el = document.getElementById('wState');
+  el.textContent = msgs[step] || "";
+  el.className = 'w-state ' + (step === 3 ? 'err' : 'ok');
+}
+
+let docCount = 2;
+function toggleDoc(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function addFakeDoc() {
+  docCount++;
+  const btn = event.target;
+  btn.textContent = "✅ Produit ajoute ! Le listener detecte le changement → UI recompose";
+  btn.style.color = 'var(--droid)';
+  setTimeout(() => { btn.textContent = "+ Simuler ajout produit"; btn.style.color = ''; }, 3000);
+}
+
+// ── Quiz engine ───────────────────────────────────────────────────────────────
+let current = 0, score = 0;
+const labels = ["A","B","C","D"];
+
+function render() {
+  const q = questions[current];
+  let html = `<div class="card">
+    <div class="qnum">${q.num} — ${q.topic}<span></span></div>
+    <div class="qtxt">${q.text}</div>`;
+
+  if (q.code) {
+    const col = q.code
+      .replace(/\b(fun|val|var|class|return|if|else|object|sealed|suspend|data|private|null|true|false|import|override)\b/g,'<span class="kw">$1</span>')
+      .replace(/\b(Flow|List|Product|String|Int|Boolean|StateFlow|DocumentSnapshot|Unit)\b/g,'<span class="ty">$1</span>')
+      .replace(/\/\/.*/g,'<span class="cm">$&</span>')
+      .replace(/"([^"]*)"/g,'<span class="str">"$1"</span>');
+    html += `<div class="qcode">${col}</div>`;
+  }
+  if (q.widget === "session")   html += buildSessionWidget();
+  if (q.widget === "firestore") html += buildFirestoreWidget();
+  if (q.widget === "dbcompare") html += buildDbCompareWidget();
+
+  html += `<div class="opts">`;
+  q.opts.forEach((opt, i) => {
+    html += `<button class="opt" onclick="answer(${i})" id="opt-${current}-${i}">
+      <span class="ol">${labels[i]}</span><span>${opt}</span></button>`;
+  });
+  html += `</div>
+    <div class="expl" id="expl-${current}"><strong>Explication</strong>${q.expl}</div>
+    <button class="nbtn" id="nbtn-${current}" onclick="next()">
+      ${current < questions.length - 1 ? "Question suivante →" : "Voir mon score →"}
+    </button>
+  </div>`;
+
+  document.getElementById("quiz").innerHTML = html;
+  updateProgress();
+}
+
+function answer(idx) {
+  const q = questions[current];
+  const opts = document.querySelectorAll(`[id^="opt-${current}-"]`);
+  opts.forEach(o => o.disabled = true);
+  opts.forEach((o, i) => {
+    if (i === q.correct) o.classList.add("correct");
+    else if (i === idx && idx !== q.correct) o.classList.add("wrong");
+    else o.classList.add("dimmed");
+  });
+  if (idx === q.correct) score++;
+  document.getElementById(`expl-${current}`).classList.add("show");
+  document.getElementById(`nbtn-${current}`).classList.add("show");
+  updateProgress();
+}
+
+function next() {
+  current++;
+  if (current >= questions.length) { showResults(); return; }
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function updateProgress() {
+  const done = current + (document.getElementById(`nbtn-${current}`)?.classList.contains("show") ? 1 : 0);
+  document.getElementById("pgfill").style.width = (done / questions.length * 100) + "%";
+  document.getElementById("pgLabel").textContent = `Question ${current + 1} / ${questions.length}`;
+  document.getElementById("pgScore").textContent = `Score : ${score}`;
+}
+
+function showResults() {
+  document.getElementById("quiz").style.display = "none";
+  document.querySelector(".pgwrap").style.display = "none";
+  const res = document.getElementById("results");
+  res.style.display = "block";
+  const pct = Math.round(score / questions.length * 100);
+  setTimeout(() => {
+    document.getElementById("arc").style.strokeDashoffset = 427.3 - (427.3 * pct / 100);
+  }, 100);
+  document.getElementById("resScore").textContent = `${score}/${questions.length}`;
+  const [title, msg] = pct >= 87
+    ? ["Excellent ! Concepts bien acquis.", "Vous maitrisez les concepts Firebase — Auth, Firestore, Storage et Realtime Database. Vous etes pret a construire des applications connectees completes."]
+    : pct >= 62
+    ? ["Bonne base !", "Les grandes lignes sont comprises. Relisez les sections theoriques des etapes ou vous avez hesite, notamment sur Firestore (temps reel vs lecture unique) et le choix du bon service."]
+    : ["Continuez l'effort !", "Reprenez le TP depuis les sections theoriques de chaque etape. Concentrez-vous sur la difference entre les 4 services Firebase et leur role dans KtShop."];
+  document.getElementById("resTitle").textContent = title;
+  document.getElementById("resMsg").textContent = msg;
+}
+
+function restart() {
+  current = 0; score = 0;
+  document.getElementById("quiz").style.display = "block";
+  document.getElementById("results").style.display = "none";
+  document.querySelector(".pgwrap").style.display = "block";
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+render();
+</script>
+</body>
+</html>
