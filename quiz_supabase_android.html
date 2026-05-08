@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Android Compose & Supabase · SupaTalk</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sp:#3ECF8E;--spd:#1A4731;--spb:#0D1A0D;
+  --bg:#071209;--sf:#0E1F0E;--sf2:#152815;
+  --bd:rgba(62,207,142,0.2);--tx:#E0F2E9;--mt:#6AAA7A;
+  --gn:#00E5A0;--gnb:rgba(0,229,160,0.08);
+  --rd:#FF5C7A;--rdb:rgba(255,92,122,0.08);
+  --yw:#FFD166;--r:12px;
+}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(62,207,142,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(62,207,142,0.03) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;z-index:0}
+.orb{position:fixed;border-radius:50%;filter:blur(130px);pointer-events:none;z-index:0}
+.orb1{width:500px;height:500px;background:rgba(62,207,142,0.14);top:-150px;right:-80px}
+.orb2{width:380px;height:380px;background:rgba(26,71,49,0.3);bottom:60px;left:-60px}
+.wrap{position:relative;z-index:1;max-width:800px;margin:0 auto;padding:40px 24px 80px}
+
+header{text-align:center;margin-bottom:52px;animation:fd .7s ease both}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(62,207,142,0.12);border:1px solid rgba(62,207,142,0.3);border-radius:999px;padding:6px 16px;font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;color:var(--sp);text-transform:uppercase;margin-bottom:20px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--sp);animation:pulse 2s infinite}
+h1{font-size:clamp(26px,5vw,40px);font-weight:800;line-height:1.15;letter-spacing:-.03em;background:linear-gradient(135deg,#fff 30%,var(--sp));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px}
+.sub{color:var(--mt);font-size:14px;font-weight:300;line-height:1.6}
+
+.pgwrap{margin-bottom:44px}
+.pgmeta{display:flex;justify-content:space-between;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--mt);margin-bottom:8px}
+.pgmeta span:last-child{color:var(--sp)}
+.pgtrk{height:3px;background:var(--sf2);border-radius:999px;overflow:hidden}
+.pgfill{height:100%;background:linear-gradient(90deg,var(--spd),var(--sp));border-radius:999px;transition:width .5s cubic-bezier(.4,0,.2,1);width:0%}
+
+/* ── Widgets ─────────────────────────────────────────── */
+.widget{background:var(--sf2);border:1px solid var(--bd);border-radius:16px;padding:20px;margin:-4px 0 20px}
+.w-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--mt);text-transform:uppercase;margin-bottom:14px}
+
+/* JWT flow */
+.jwt-flow{display:flex;flex-direction:column;gap:8px}
+.jwt-step{padding:10px 14px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;opacity:.35;transition:all .4s;cursor:pointer;border:1px solid transparent}
+.jwt-step:hover{opacity:.7}
+.jwt-step.active{opacity:1}
+.jwt-s1{background:rgba(62,207,142,0.1);border-color:rgba(62,207,142,0.3);color:var(--sp)}
+.jwt-s2{background:rgba(26,71,49,0.3);border-color:rgba(62,207,142,0.2);color:#A5D6A7}
+.jwt-s3{background:rgba(0,229,160,0.08);border-color:rgba(0,229,160,0.25);color:var(--gn)}
+.jwt-s4{background:rgba(255,209,102,0.08);border-color:rgba(255,209,102,0.2);color:var(--yw)}
+.jwt-hint{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mt);margin-top:8px;text-align:center}
+
+/* RLS simulator */
+.rls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.rls-op{padding:10px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;border:none;text-align:left;transition:all .2s}
+.rls-op.read{background:rgba(62,207,142,0.1);color:var(--sp);border:1px solid rgba(62,207,142,0.25)}
+.rls-op.write-own{background:rgba(0,229,160,0.08);color:var(--gn);border:1px solid rgba(0,229,160,0.2)}
+.rls-op.write-other{background:rgba(255,92,122,0.08);color:var(--rd);border:1px solid rgba(255,92,122,0.2)}
+.rls-result{text-align:center;padding:10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;min-height:40px;display:flex;align-items:center;justify-content:center;transition:all .3s}
+.rls-ok{background:rgba(0,229,160,0.12);color:var(--gn);border:1px solid rgba(0,229,160,0.25)}
+.rls-block{background:rgba(255,92,122,0.12);color:var(--rd);border:1px solid rgba(255,92,122,0.25)}
+.rls-idle{background:var(--sf);color:var(--mt);border:1px solid var(--bd)}
+
+/* Realtime flow */
+.rt-flow{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.9;color:var(--mt)}
+.rt-node{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px}
+.rt-db{background:rgba(62,207,142,0.15);color:var(--sp);border:1px solid rgba(62,207,142,0.25)}
+.rt-sv{background:rgba(26,71,49,0.4);color:#A5D6A7;border:1px solid rgba(62,207,142,0.15)}
+.rt-app{background:rgba(0,229,160,0.1);color:var(--gn);border:1px solid rgba(0,229,160,0.2)}
+.rt-btn{display:inline-block;margin-top:12px;padding:6px 14px;background:rgba(62,207,142,0.15);border:1px solid rgba(62,207,142,0.3);border-radius:6px;color:var(--sp);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s}
+.rt-btn:hover{background:rgba(62,207,142,0.25)}
+.rt-pulse{display:none;animation:rtpulse .6s ease}
+@keyframes rtpulse{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+
+/* Card */
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:20px;padding:34px;margin-bottom:16px;animation:fu .5s ease both;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--spd),var(--sp),transparent)}
+.qnum{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;color:var(--sp);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.qnum::after{content:'';flex:1;height:1px;background:var(--bd)}
+.qtxt{font-size:17px;font-weight:600;line-height:1.55;margin-bottom:24px}
+.qcode{background:#040D05;border:1px solid rgba(62,207,142,0.15);border-radius:8px;padding:12px 16px;margin:-4px 0 18px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#CCDDFF;line-height:1.7;overflow-x:auto}
+.kw{color:#C792EA}.ty{color:#82AAFF}.str{color:#C3E88D}.cm{color:#546E7A}.kts{color:#3ECF8E}
+
+.opts{display:flex;flex-direction:column;gap:9px}
+.opt{display:flex;align-items:flex-start;gap:13px;padding:14px 18px;background:var(--sf2);border:1px solid transparent;border-radius:var(--r);cursor:pointer;transition:all .2s;text-align:left;width:100%;font-family:'Sora',sans-serif;color:var(--tx);font-size:14px;line-height:1.5}
+.opt:hover:not(:disabled){border-color:rgba(62,207,142,0.3);background:rgba(62,207,142,0.05);transform:translateX(4px)}
+.opt:disabled{cursor:default}
+.ol{flex-shrink:0;width:26px;height:26px;border-radius:6px;background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.25);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--sp);margin-top:1px}
+.opt.correct{border-color:var(--gn);background:var(--gnb)}.opt.correct .ol{background:var(--gn);border-color:var(--gn);color:#000}
+.opt.wrong{border-color:var(--rd);background:var(--rdb);opacity:.7}.opt.wrong .ol{background:var(--rd);border-color:var(--rd);color:#fff}
+.opt.dimmed{opacity:.32}
+.expl{display:none;margin-top:18px;padding:14px 18px;background:rgba(255,209,102,0.07);border:1px solid rgba(255,209,102,0.2);border-radius:var(--r);font-size:13px;line-height:1.65;color:#ccc}
+.expl.show{display:block;animation:fu .3s ease both}
+.expl strong{color:var(--yw);font-weight:600;display:block;margin-bottom:3px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace}
+.nbtn{display:none;margin-top:18px;width:100%;padding:15px;background:linear-gradient(135deg,var(--spd),var(--sp));border:none;border-radius:var(--r);color:#fff;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.nbtn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(62,207,142,0.3)}
+.nbtn.show{display:block;animation:fu .3s ease both}
+
+#results{display:none;text-align:center;animation:fu .6s ease both}
+.sring{width:160px;height:160px;margin:0 auto 28px;position:relative}
+.sring svg{transform:rotate(-90deg)}
+.sring-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#fff;font-family:'JetBrains Mono',monospace}
+#results h2{font-size:28px;font-weight:800;margin-bottom:10px}
+#results p{color:var(--mt);font-size:15px;margin-bottom:28px}
+.retry{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,var(--spd),var(--sp));border:none;border-radius:999px;color:#fff;font-family:'Sora',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s}
+.retry:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(62,207,142,0.4)}
+
+@keyframes fd{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="wrap">
+
+<header>
+  <div class="badge"><span class="dot"></span> Android · Compose · Supabase</div>
+  <h1>Quiz — SupaTalk<br>Concepts Supabase</h1>
+  <p class="sub">Auth · PostgreSQL · Storage · Realtime · Edge Functions<br>8 questions · Niveau debutant</p>
+</header>
+
+<div class="pgwrap">
+  <div class="pgmeta"><span id="pgLabel">Question 1 / 8</span><span id="pgScore">Score : 0</span></div>
+  <div class="pgtrk"><div class="pgfill" id="pgfill"></div></div>
+</div>
+
+<div id="quiz"></div>
+<div id="results">
+  <div class="sring">
+    <svg width="160" height="160" viewBox="0 0 160 160">
+      <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(62,207,142,.15)" stroke-width="14"/>
+      <circle id="arc" cx="80" cy="80" r="68" fill="none" stroke="url(#g)" stroke-width="14"
+        stroke-linecap="round" stroke-dasharray="427.3" stroke-dashoffset="427.3"/>
+      <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#1A4731"/><stop offset="100%" stop-color="#3ECF8E"/>
+      </linearGradient></defs>
+    </svg>
+    <div class="sring-val" id="resScore"></div>
+  </div>
+  <h2 id="resTitle"></h2>
+  <p id="resMsg"></p>
+  <button class="retry" onclick="restart()">↺  Recommencer</button>
+</div>
+
+<script>
+const questions = [
+  // Q1 — Supabase vs Firebase
+  {
+    num:"01", topic:"Supabase vs Firebase",
+    text:"La plus grande difference entre Supabase et Firebase concerne la base de donnees. Quelle est cette difference fondamentale ?",
+    opts:[
+      "Firebase est gratuit, Supabase est payant.",
+      "Supabase utilise PostgreSQL (base relationnelle SQL avec tables et colonnes), Firebase utilise des bases NoSQL (documents JSON sans schema fixe).",
+      "Supabase ne fonctionne qu'avec Kotlin, Firebase fonctionne avec tous les langages.",
+      "Firebase est plus recent que Supabase et donc plus performant."
+    ],
+    correct:1,
+    expl:"La distinction cle est le type de base de donnees. PostgreSQL (Supabase) est une base relationnelle : les donnees sont organisees en tables avec des colonnes typees, des Foreign Keys et des relations. Firestore/Realtime Database (Firebase) sont NoSQL : des documents JSON flexibles sans schema impose. Ce choix impacte la facon dont on structure et interroge les donnees."
+  },
+  // Q2 — JWT
+  {
+    num:"02", topic:"Auth · JWT Token",
+    text:"Quand un utilisateur se connecte sur SupaTalk, Supabase retourne un JWT (JSON Web Token). A quoi sert ce token dans l'application ?",
+    widget:"jwt",
+    opts:[
+      "Le JWT est le mot de passe chiffre de l'utilisateur, stocke dans l'app.",
+      "Le JWT prouve l'identite de l'utilisateur aupres de Supabase. Il est envoye automatiquement dans chaque requete et permet aux Row Level Security de savoir qui fait la demande.",
+      "Le JWT est un identifiant unique numerique incremental attribue a l'inscription.",
+      "Le JWT sert uniquement a chiffrer les donnees dans Storage."
+    ],
+    correct:1,
+    expl:"Le JWT est un 'badge numerique' qui prouve qui vous etes. Le SDK Supabase l'envoie automatiquement dans chaque requete (en-tete HTTP Authorization). Cote serveur, PostgreSQL lit ce token pour connaitre l'uid de l'utilisateur et appliquer les politiques Row Level Security (RLS). C'est ce mecanisme qui permet d'ecrire auth.uid() dans les politiques RLS."
+  },
+  // Q3 — auth.users vs profiles
+  {
+    num:"03", topic:"Auth · auth.users vs profiles",
+    text:"Dans SupaTalk on a deux entites liees : auth.users (Supabase) et profiles (notre table). Pourquoi cette separation ?",
+    code:`-- Dans Supabase
+auth.users    → geree par Supabase (email, mot de passe hache...)
+profiles      → notre table (username, avatar_url, bio...)
+
+-- Les deux sont liees par le meme UUID
+profiles.id  uuid references auth.users(id)`,
+    opts:[
+      "auth.users et profiles sont la meme table — c'est juste une convention de nommage.",
+      "auth.users est inaccessible depuis l'app (securite). On cree profiles pour stocker les donnees publiques du profil (pseudo, avatar) accessibles via l'API.",
+      "Supabase impose d'avoir deux tables pour l'auth — c'est une limitation technique.",
+      "profiles est une table de sauvegarde en cas de perte de auth.users."
+    ],
+    correct:1,
+    expl:"auth.users est geree internement par Supabase et n'est pas directement accessible depuis l'API publique (protection des donnees sensibles comme le hash du mot de passe). Notre table profiles stocke les donnees publiques du profil utilisateur et est exposee via l'API avec des politiques RLS appropriees. Le trigger PostgreSQL handle_new_user() synchronise la creation en inserant automatiquement dans profiles quand un utilisateur s'inscrit dans auth.users."
+  },
+  // Q4 — RLS
+  {
+    num:"04", topic:"PostgreSQL · Row Level Security",
+    text:"Dans SupaTalk, on active les Row Level Security (RLS) sur la table posts. Que se passe-t-il si un utilisateur tente de supprimer le post d'un autre utilisateur directement via l'API Supabase ?",
+    widget:"rls",
+    opts:[
+      "L'operation reussit — RLS ne protege que les lectures, pas les suppressions.",
+      "L'operation est bloquee par la politique RLS cote serveur : 'allow delete using (auth.uid() = user_id)'. Impossible a contourner, meme en appelant l'API directement.",
+      "L'operation reussit mais Supabase envoie une alerte email a l'admin.",
+      "RLS bloque uniquement si l'utilisateur utilise l'app — via l'API, les protections sont contournees."
+    ],
+    correct:1,
+    expl:"C'est la force des RLS : elles s'executent sur les serveurs PostgreSQL, avant toute operation sur les donnees. La politique 'allow delete using (auth.uid() = user_id)' verifie cote serveur que l'UUID du token JWT correspond au user_id du post. Si ce n'est pas le cas, la suppression est refusee avec une erreur 403. Il est impossible de contourner une RLS via l'API ou en modifiant l'app."
+  },
+  // Q5 — Storage buckets
+  {
+    num:"05", topic:"Storage · Buckets",
+    text:"Dans SupaTalk, les avatars sont stockes dans un bucket 'avatars' marque comme public. Qu'est-ce que ca signifie concretement ?",
+    opts:[
+      "N'importe qui peut uploader des fichiers dans ce bucket sans connexion.",
+      "Les fichiers du bucket ont une URL HTTPS directement accessible dans un navigateur, sans avoir besoin d'un token JWT. Pratique pour afficher des images dans une app.",
+      "Le bucket est partage entre tous les projets Supabase du meme compte.",
+      "Un bucket public est visible dans la Console Supabase mais pas accessible depuis l'app."
+    ],
+    correct:1,
+    expl:"Un bucket public signifie que les fichiers qu'il contient ont une URL HTTPS publique, accessible sans authentification. Cela permet a Coil (AsyncImage) d'afficher l'image directement depuis l'URL sans envoyer de JWT. La politique de lecture est 'using (true)' — tout le monde peut lire. En revanche, les politiques d'upload restent restrictives : seul le proprietaire peut uploader son propre avatar."
+  },
+  // Q6 — Realtime
+  {
+    num:"06", topic:"Realtime · WebSocket",
+    text:"Dans SupaTalk, l'utilisateur A like un post. L'utilisateur B voit le compteur de likes augmenter instantanement sur son ecran sans rafraichir. Quel mecanisme rend cela possible ?",
+    widget:"realtime",
+    opts:[
+      "L'app de l'utilisateur B fait une requete toutes les secondes pour verifier les nouveaux likes (polling).",
+      "Supabase Realtime maintient une connexion WebSocket permanente. Quand un INSERT est fait dans la table likes, PostgreSQL l'enregistre dans son journal (WAL), Supabase le detecte et pousse l'evenement a tous les clients abonnes via WebSocket.",
+      "Les deux apps sont connectees en peer-to-peer directement, sans passer par Supabase.",
+      "Supabase envoie une notification push Firebase qui declenche un rafraichissement."
+    ],
+    correct:1,
+    expl:"Supabase Realtime utilise PostgreSQL Logical Replication : chaque modification est enregistree dans le Write Ahead Log (WAL). Supabase lit ce journal et pousse les changements aux clients connectes via WebSocket. Dans SupaTalk, on s'abonne au channel 'likes-channel' avec postgresChangeFlow<PostgresAction.Insert>(). Quand un like est insere, l'evenement arrive automatiquement, le ViewModel met a jour le StateFlow, et Compose recompose le compteur."
+  },
+  // Q7 — Edge Functions cas d'usage
+  {
+    num:"07", topic:"Edge Functions · Concept",
+    text:"Pour la moderation des posts dans SupaTalk, on utilise une Edge Function plutot que de verifier le contenu directement dans le ViewModel Kotlin. Pourquoi ?",
+    code:`// Option A : verification dans le ViewModel (Kotlin)
+fun createPost(content: String) {
+    if (!content.contains("spam")) {
+        supabase.from("posts").insert(...)
+    }
+}
+
+// Option B : via Edge Function (TypeScript/Deno)
+supabase.functions.invoke("moderate-post",
+    body = buildJsonObject { put("content", content) })`,
+    opts:[
+      "Option A est plus rapide car tout se passe sur l'appareil, sans requete reseau supplementaire.",
+      "Option A est insuffisante : un utilisateur peut modifier l'APK pour contourner la verification. Option B s'execute sur les serveurs Supabase — impossible a contourner, meme en modifiant l'app.",
+      "Les Edge Functions sont obligatoires pour toute insertion dans Supabase.",
+      "Option B est preferable uniquement pour des raisons de performance — les deux ont le meme niveau de securite."
+    ],
+    correct:1,
+    expl:"La securite est le motif principal. Le code de l'app (Option A) s'execute sur l'appareil de l'utilisateur. Par reverse engineering, on peut modifier l'APK pour supprimer le if(!content.contains('spam')) et publier n'importe quoi. Une Edge Function (Option B) s'execute sur les serveurs Supabase — le code n'est pas accessible ni modifiable par l'utilisateur. Associee a des RLS qui bloquent les insertions directes, c'est la seule maniere de garantir que tout le contenu passe par la moderation."
+  },
+  // Q8 — Trigger PostgreSQL
+  {
+    num:"08", topic:"PostgreSQL · Trigger",
+    text:"Dans SupaTalk, un trigger PostgreSQL handle_new_user() cree automatiquement un profil a chaque inscription. Quel est l'avantage de cette approche par rapport a creer le profil depuis l'app Android apres l'inscription ?",
+    opts:[
+      "Le trigger est plus rapide car il evite une requete reseau supplementaire depuis l'app.",
+      "Si la creation du profil est faite depuis l'app et que la connexion coupe apres l'inscription mais avant la creation du profil, l'utilisateur se retrouve sans profil — etat incoherent. Le trigger garantit que le profil est toujours cree atomiquement avec le compte.",
+      "Supabase impose l'utilisation de triggers pour toutes les insertions dans la table profiles.",
+      "Le trigger permet d'eviter de declarer la table profiles dans le schema Supabase."
+    ],
+    correct:1,
+    expl:"C'est une question d'atomicite et de fiabilite. Si on cree le profil depuis l'app en deux etapes (1. signUp(), 2. insert dans profiles), une coupure reseau entre les deux laisse l'utilisateur dans un etat incoherent : compte cree mais sans profil. L'app planterait alors au prochain chargement car le JOIN avec profiles retournerait null. Le trigger s'execute dans la meme transaction que la creation du compte — les deux reussissent ou echouent ensemble. Aucun etat intermediaire incoherent n'est possible."
+  },
+];
+
+// ── Widgets ───────────────────────────────────────────────────────────────────
+function buildJwtWidget() {
+  return `<div class="widget">
+    <div class="w-label">Cycle de vie du JWT dans SupaTalk — cliquer sur chaque etape</div>
+    <div class="jwt-flow">
+      <div class="jwt-step jwt-s1" onclick="toggleJwt(0)">[1]  Utilisateur s'inscrit / se connecte via AuthScreen</div>
+      <div class="jwt-step jwt-s2" onclick="toggleJwt(1)">[2]  Supabase valide les identifiants et genere un JWT signe</div>
+      <div class="jwt-step jwt-s3" onclick="toggleJwt(2)">[3]  SDK stocke le JWT. Chaque requete l'envoie automatiquement dans Authorization: Bearer {token}</div>
+      <div class="jwt-step jwt-s4" onclick="toggleJwt(3)">[4]  PostgreSQL RLS lit auth.uid() depuis le JWT → applique les politiques de securite</div>
+    </div>
+    <div class="jwt-hint">↑ Toucher pour activer chaque etape</div>
+  </div>`;
+}
+
+function buildRlsWidget() {
+  return `<div class="widget">
+    <div class="w-label">Simulateur RLS — que peut faire l'utilisateur connecte ?</div>
+    <div class="rls-grid">
+      <button class="rls-op read" onclick="simRls('read','✅ SELECT autorise — politique : using (true)')">📖 Lire tous les posts</button>
+      <button class="rls-op write-own" onclick="simRls('ok','✅ INSERT autorise — auth.uid() = user_id valide')">✏️ Publier son post</button>
+      <button class="rls-op write-own" onclick="simRls('ok','✅ DELETE autorise — auth.uid() = user_id du post valide')">🗑️ Supprimer son post</button>
+      <button class="rls-op write-other" onclick="simRls('block','🚫 BLOQUE par RLS — auth.uid() ≠ user_id du post')">❌ Supprimer le post d'un autre</button>
+    </div>
+    <div class="rls-result rls-idle" id="rlsResult">← Simuler une operation</div>
+  </div>`;
+}
+
+function buildRealtimeWidget() {
+  return `<div class="widget">
+    <div class="w-label">Flux Realtime — comment le like arrive en temps reel</div>
+    <div class="rt-flow">
+      <span class="rt-node rt-app">App User A</span> → INSERT likes → <span class="rt-node rt-db">PostgreSQL WAL</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="rt-node rt-sv">Supabase Realtime</span> lit le WAL → WebSocket permanent<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+      <span class="rt-node rt-app">App User B</span> reçoit l'evenement → ViewModel → <span style="color:var(--sp)">UI recompose ♡ +1</span>
+    </div>
+    <button class="rt-btn" onclick="simRealtime()">▶  Simuler un like de l'Utilisateur A</button>
+    <div id="rtPulse" class="rt-pulse" style="display:none;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gn)">
+      ✓ Evenement recu par l'Utilisateur B — compteur mis a jour !
+    </div>
+  </div>`;
+}
+
+function toggleJwt(idx) {
+  document.querySelectorAll('.jwt-step').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+function simRls(type, msg) {
+  const el = document.getElementById('rlsResult');
+  el.textContent = msg;
+  el.className = 'rls-result ' + (type === 'block' ? 'rls-block' : 'rls-ok');
+}
+
+function simRealtime() {
+  const el = document.getElementById('rtPulse');
+  el.style.display = 'block';
+  el.style.animation = 'none';
+  requestAnimationFrame(() => { el.style.animation = 'rtpulse .6s ease'; });
+  setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
+// ── Engine ────────────────────────────────────────────────────────────────────
+let current = 0, score = 0;
+const labels = ["A","B","C","D"];
+
+function render() {
+  const q = questions[current];
+  let html = `<div class="card">
+    <div class="qnum">${q.num} — ${q.topic}<span></span></div>
+    <div class="qtxt">${q.text}</div>`;
+  if (q.code) {
+    const col = q.code
+      .replace(/\b(fun|val|var|if|return|suspend|class|import|true|false|null)\b/g,'<span class="kw">$1</span>')
+      .replace(/\b(String|Boolean|Int|Unit)\b/g,'<span class="ty">$1</span>')
+      .replace(/\/\/.*/g,'<span class="cm">$&</span>')
+      .replace(/"([^"]*)"/g,'<span class="str">"$1"</span>');
+    html += `<div class="qcode">${col}</div>`;
+  }
+  if (q.widget === "jwt")      html += buildJwtWidget();
+  if (q.widget === "rls")      html += buildRlsWidget();
+  if (q.widget === "realtime") html += buildRealtimeWidget();
+
+  html += `<div class="opts">`;
+  q.opts.forEach((opt, i) => {
+    html += `<button class="opt" onclick="answer(${i})" id="opt-${current}-${i}">
+      <span class="ol">${labels[i]}</span><span>${opt}</span></button>`;
+  });
+  html += `</div>
+    <div class="expl" id="expl-${current}"><strong>Explication</strong>${q.expl}</div>
+    <button class="nbtn" id="nbtn-${current}" onclick="next()">
+      ${current < questions.length - 1 ? "Question suivante →" : "Voir mon score →"}
+    </button>
+  </div>`;
+  document.getElementById("quiz").innerHTML = html;
+  updateProgress();
+}
+
+function answer(idx) {
+  const q = questions[current];
+  const opts = document.querySelectorAll(`[id^="opt-${current}-"]`);
+  opts.forEach(o => o.disabled = true);
+  opts.forEach((o, i) => {
+    if (i === q.correct) o.classList.add("correct");
+    else if (i === idx && idx !== q.correct) o.classList.add("wrong");
+    else o.classList.add("dimmed");
+  });
+  if (idx === q.correct) score++;
+  document.getElementById(`expl-${current}`).classList.add("show");
+  document.getElementById(`nbtn-${current}`).classList.add("show");
+  updateProgress();
+}
+
+function next() {
+  current++;
+  if (current >= questions.length) { showResults(); return; }
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function updateProgress() {
+  const done = current + (document.getElementById(`nbtn-${current}`)?.classList.contains("show") ? 1 : 0);
+  document.getElementById("pgfill").style.width = (done / questions.length * 100) + "%";
+  document.getElementById("pgLabel").textContent = `Question ${current + 1} / ${questions.length}`;
+  document.getElementById("pgScore").textContent = `Score : ${score}`;
+}
+
+function showResults() {
+  document.getElementById("quiz").style.display = "none";
+  document.querySelector(".pgwrap").style.display = "none";
+  document.getElementById("results").style.display = "block";
+  const pct = Math.round(score / questions.length * 100);
+  setTimeout(() => { document.getElementById("arc").style.strokeDashoffset = 427.3 - (427.3 * pct / 100); }, 100);
+  document.getElementById("resScore").textContent = `${score}/${questions.length}`;
+  const [title, msg] = pct >= 87
+    ? ["Excellente maitrise !", "Vous comprenez les concepts fondamentaux de Supabase — PostgreSQL, RLS, JWT, Realtime et Edge Functions. Vous etes pret a construire des applications connectees avec Supabase."]
+    : pct >= 62
+    ? ["Bonne base !", "Les grandes lignes sont comprises. Relisez les sections theoriques sur les RLS, la difference auth.users/profiles, et le fonctionnement du Realtime."]
+    : ["Continuez l'effort !", "Reprenez le TP depuis le debut. Concentrez-vous sur les concepts cles : JWT, RLS, la difference Supabase/Firebase, et le role de chaque service dans SupaTalk."];
+  document.getElementById("resTitle").textContent = title;
+  document.getElementById("resMsg").textContent = msg;
+}
+
+function restart() {
+  current = 0; score = 0;
+  document.getElementById("quiz").style.display = "block";
+  document.getElementById("results").style.display = "none";
+  document.querySelector(".pgwrap").style.display = "block";
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+render();
+</script>
+</body>
+</html>
